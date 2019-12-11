@@ -20,6 +20,7 @@ def create_matrix_1type(index, amplitude, type_xy):
     if (type_xy == 'y'): m = m.T
     return m
 
+
 def create_matchmatrix(mx, my):
     '''
 
@@ -30,23 +31,38 @@ def create_matchmatrix(mx, my):
     target = np.where(np.logical_and(mx == my, mx, my), 1, 0)
     return target
 
-class Dataset(data.Dataset):
+
+class DatasetTracks(data.Dataset):
     # Characterizes a dataset for PyTorch
-    def __init__(self, data_dir, length):
+    def __init__(self, data_dir, length, train=True):
         # Initialization
         self.dir = data_dir
         self.length = length
+        self.all = []
+
+        # Create 2 different datasets for training and test
+        if train:
+            start_range = 0
+        else:
+            start_range = length
+
+        for i in range(start_range, start_range + length):
+            self.all.append(self.read_file(i))
+        # print(self.all[0][0].size())
 
     def __len__(self):
         # Denotes the total number of samples
         return self.length
 
-    def __getitem__(self, index):
+    def read_file(self, index):
         # Generate one sample of data
         # Select sample
         file_input = self.dir + str(index) + '_input.pkl'
+        # file_input = self.dir + '0_input.pkl'
+        # print('file opened')
         # Create the corresponding data frame
         in_df = pd.read_pickle(file_input)
+        # print('dataframe imported from pickle')
 
         # Create datapoint and target
         grid_size = 512
@@ -55,8 +71,8 @@ class Dataset(data.Dataset):
         target = np.zeros((1, grid_size, grid_size, n_detectors))
 
         for layer in range(6):
-            boardy = layer*2
-            boardx = layer*2+1
+            boardy = layer * 2
+            boardx = layer * 2 + 1
             ch_numbersy = in_df.ChPosition[boardy]
             ch_numbersx = in_df.ChPosition[boardx]
             TOTy = in_df.TOT[boardy]
@@ -76,18 +92,37 @@ class Dataset(data.Dataset):
         target = torch.from_numpy(target)
         return datapoint, target
 
-class NeuralNetModel(torch.nn.Module):
-  def __init__(self):
-    super().__init__()
-    num_extracted_features = 20
-    # This creates all the parameters that are optimized to fit the model
-    self.conv1 = torch.nn.Conv3d(in_channels=2, out_channels=num_extracted_features, kernel_size=(3,3,3), padding=(1,1,1))
-    self.pointwise_nonlinearity = torch.nn.ReLU()
-    self.conv2 = torch.nn.Conv3d(in_channels=num_extracted_features, out_channels=1, kernel_size=(3,3,3), padding=(1,1,1))
+    def __getitem__(self, index):
+        # print(index)
+        return self.all[index]
 
-  def forward(self, inpt):
-    # This declares how the model is run on an input
-    x = self.conv1(inpt)
-    x = self.pointwise_nonlinearity(x)
-    x = self.conv2(x)
-    return x
+
+class NeuralNetModel(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        num_extracted_features = 2
+        # This creates all the parameters that are optimized to fit the model
+        self.conv1 = torch.nn.Conv3d(in_channels=2, out_channels=num_extracted_features, kernel_size=(3, 3, 3),
+                                     padding=(1, 1, 1))
+        self.pointwise_nonlinearity = torch.nn.ReLU()
+        self.conv2 = torch.nn.Conv3d(in_channels=num_extracted_features, out_channels=1, kernel_size=(3, 3, 3),
+                                     padding=(1, 1, 1))
+
+    def get_num_params(self):
+        num_params = 0
+        for param in self.parameters():
+            num_params += torch.numel(param)
+
+        return num_params
+
+    def forward(self, inpt):
+        # print("Paramters", self.get_num_params())
+        # mprint('Forward function')
+        # This declares how the model is run on an input
+        x = self.conv1(inpt)
+        # print(x.size())
+        # print('First layer done')
+        x = self.pointwise_nonlinearity(x)
+        # print('Activation done')
+        x = self.conv2(x)
+        return x
