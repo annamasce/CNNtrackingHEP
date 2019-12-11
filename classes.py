@@ -38,7 +38,7 @@ class DatasetTracks(data.Dataset):
         # Initialization
         self.dir = data_dir
         self.length = length
-        self.all = []
+        # self.all = []
         self.offset = 0
 
         # Create 2 different datasets for training and test
@@ -102,7 +102,7 @@ class DatasetTracks(data.Dataset):
 class NeuralNetModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        num_extracted_features = 2
+        num_extracted_features = 3
         # This creates all the parameters that are optimized to fit the model
         self.conv1 = torch.nn.Conv3d(in_channels=2, out_channels=num_extracted_features, kernel_size=(3, 3, 3),
                                      padding=(1, 1, 1))
@@ -119,12 +119,10 @@ class NeuralNetModel(torch.nn.Module):
 
     def forward(self, inpt):
         # print("Paramters", self.get_num_params())
-        # mprint('Forward function')
+        # print('Forward function')
         # This declares how the model is run on an input
         x = self.conv1(inpt)
         # print(x.size())
-        # print('First layer done')
         x = self.pointwise_nonlinearity(x)
-        # print('Activation done')
         x = self.conv2(x)
         return x
