@@ -11,37 +11,33 @@ params = {'batch_size': 8,  # from 8 to 64
           'shuffle': False,
           'num_workers': 6}
 
-max_epochs = 2
-
-training_set = DatasetTracks('../../DataFrames/', 2000)
-training_generator = data.DataLoader(training_set, **params)
-
+length = 1000
+Dataset = DatasetTracks('../../DataFrames/', length)
+training_set, validation_set = data.dataset.random_split(Dataset, [int(length/2), int(length/2)])
+print(len(training_set))
+print(len(validation_set))
+training_generator = data.DataLoader(dataset=training_set, **params)
 print('Training generator is ready')
-
-validation_set = DatasetTracks('../../DataFrames/', 2000)
-validation_generator = data.DataLoader(validation_set, **params)
-
+validation_generator = data.DataLoader(dataset=validation_set, **params)
 print('Test generator is ready')
 
 model = NeuralNetModel()
 optimizer = torch.optim.SGD(model.parameters(), lr=1e-1)
 model = model.float()
+loss_fn = torch.nn.BCEWithLogitsLoss()
 
-plt.figure()
-plt.title('Loss function')
-ax = plt.subplot()
-ax.plot([], [])
-
+# plt.figure()
+# plt.title('Loss function')
+# ax = plt.subplot()
+# ax.plot([], [])
+train_losses = []
+val_losses = []
+max_epochs = 2
 print('Starting the training...')
-
 for epoch in range(max_epochs):
     # Training
     running_loss = 0.0
-    # for i in range(len(training_set)):
-    #     data = training_set[i]
-    #     local_datapoint, local_target = data
     for i, data in enumerate(training_generator, 0):
-        break
         # get the inputs; data is a list of [datapoints, targets]
         # print(i, type(data))
         local_datapoint, local_target = data
@@ -54,14 +50,14 @@ for epoch in range(max_epochs):
         # Model computations
         prediction = model(local_datapoint.float())
         # print('Prediction done')
-        # loss = torch.nn.CrossEntropyLoss(prediction, local_target)
-        loss = torch.nn.functional.mse_loss(prediction.float(), local_target.float())
+        loss = loss_fn(prediction.float(), local_target.float())
         optimizer.zero_grad()
         loss.backward()
         # print('Gradients computed')
         optimizer.step()
         # print('Model updated')
-
+        train_losses.append(loss.item())
+        # print(loss.item())
         # print statistics and plot point
         epoch_iters = len(training_set) / params['batch_size']
         running_loss = running_loss + loss.item()
@@ -70,8 +66,19 @@ for epoch in range(max_epochs):
                   (epoch, i, running_loss / 4))
             running_loss = 0.0
 
+    # Validation
+    with torch.no_grad():
+        for j, val_data in enumerate(validation_generator, 0):
+            val_local_datapoint, val_local_target = val_data
+
+            model.eval()
+
+            val_prediction = model(val_local_datapoint.float())
+            val_loss = loss_fn(val_prediction.float(), val_local_target.float())
+            val_losses.append(val_loss.item())
+
 # Save the trained model
-PATH = '../CNN_filters.pth'
+PATH = '../CNN.pth'
 torch.save(model.state_dict(), PATH)
 
-plt.show()
+# plt.show()
