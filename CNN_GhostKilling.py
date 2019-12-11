@@ -13,12 +13,12 @@ params = {'batch_size': 4,  # from 8 to 64
 
 max_epochs = 2
 
-training_set = DatasetTracks('../../DataFrames/', 200)
+training_set = DatasetTracks('./DataFrames/', 200)
 training_generator = data.DataLoader(training_set, **params)
 
 print('Training generator is ready')
 
-validation_set = DatasetTracks('../../DataFrames/', 200)
+validation_set = DatasetTracks('./DataFrames/', 200)
 validation_generator = data.DataLoader(validation_set, **params)
 
 print('Test generator is ready')

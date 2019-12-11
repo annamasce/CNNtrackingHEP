@@ -39,15 +39,16 @@ class DatasetTracks(data.Dataset):
         self.dir = data_dir
         self.length = length
         self.all = []
+        self.offset = 0
 
         # Create 2 different datasets for training and test
         if train:
-            start_range = 0
+            self.offset = 0
         else:
-            start_range = length
+            self.offset = length
 
-        for i in range(start_range, start_range + length):
-            self.all.append(self.read_file(i))
+        #for i in range(start_range, start_range + length):
+        	#self.all.append(self.read_file(i))
         # print(self.all[0][0].size())
 
     def __len__(self):
@@ -94,8 +95,9 @@ class DatasetTracks(data.Dataset):
 
     def __getitem__(self, index):
         # print(index)
-        return self.all[index]
-
+        #return self.all[index]
+        item = self.read_file(index + self.offset)
+        return item
 
 class NeuralNetModel(torch.nn.Module):
     def __init__(self):
