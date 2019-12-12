@@ -9,7 +9,7 @@ params = {'batch_size': 8,  # from 8 to 64
           'num_workers': 6}
 
 length = 1000
-Dataset = DatasetTracks('../../DataFrames/', length)
+Dataset = DatasetTracks('DataFrames/', length)
 training_set, validation_set = data.dataset.random_split(Dataset, [int(length/2), int(length/2)])
 print(len(training_set))
 print(len(validation_set))
