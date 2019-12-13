@@ -58,7 +58,7 @@ class DatasetTracks(data.Dataset):
     def read_file(self, index):
         # Generate one sample of data
         # Select sample
-        file_input = self.dir + str(index) + '_input.pkl'
+        file_input = '{}/{}_input.pkl'.format(self.dir, index)
         # file_input = self.dir + '0_input.pkl'
         # print('file opened')
         # Create the corresponding data frame
