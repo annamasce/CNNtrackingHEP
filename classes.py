@@ -47,9 +47,10 @@ class DatasetTracks(data.Dataset):
         else:
             self.offset = length
 
-        #for i in range(start_range, start_range + length):
-        	#self.all.append(self.read_file(i))
-        # print(self.all[0][0].size())
+        # for i in range(start_range, start_range + length):
+
+    # self.all.append(self.read_file(i))
+    # print(self.all[0][0].size())
 
     def __len__(self):
         # Denotes the total number of samples
@@ -95,9 +96,10 @@ class DatasetTracks(data.Dataset):
 
     def __getitem__(self, index):
         # print(index)
-        #return self.all[index]
+        # return self.all[index]
         item = self.read_file(index + self.offset)
         return item
+
 
 class NeuralNetModel(torch.nn.Module):
     def __init__(self):
@@ -126,3 +128,32 @@ class NeuralNetModel(torch.nn.Module):
         x = self.pointwise_nonlinearity(x)
         x = self.conv2(x)
         return x
+
+def signal_entries(input, output):
+    '''
+    This function takes 2 input matrices of the same size (x and y layer for a certain detector) and returns the subset of the output matrix corresponding to the possible signal points (match between x and y layers)
+    :param tuple input: (tensor ymatrix, tensor xmatrix)
+    :param torch tensor output: layer matrix
+    :return: (torch tensor) subset od output corresponding to possible signal points
+    '''
+    ymatrix = input[0]
+    xmatrix = input[1]
+    ymatrix = ymatrix[:, 0] # take only one column
+    xmatrix = xmatrix[0, :] # take only one row
+    y_index = ymatrix.nonzero(as_tuple=True)[0]
+    x_index = xmatrix.nonzero(as_tuple=True)[0]
+    target = torch.index_select(output, 0, y_index)
+    target = torch.index_select(target, 1, x_index)
+    return target
+
+def transf_prediction(prediction, thr):
+    true_tensor = torch.ones(tuple(prediction.size()))
+    false_tensor = torch.zeros(tuple(prediction.size()))
+    return torch.where(prediction>thr, true_tensor, false_tensor)
+
+def accuracy_step(prediction, target, thr):
+    prediction = transf_prediction(prediction, thr)
+    corr_tensor = torch.eq(prediction, target)
+    correct = float(corr_tensor.sum())
+    total = corr_tensor.nelement()
+    return correct, total

@@ -1,6 +1,6 @@
 import torch
 from torch.utils import data
-from classes import DatasetTracks, NeuralNetModel
+from classes import DatasetTracks, NeuralNetModel, accuracy_step, signal_entries
 import matplotlib.pyplot as plt
 import sys
 import argparse
@@ -14,6 +14,10 @@ import json
 parser = argparse.ArgumentParser()
 parser.add_argument('in_dir', help='Path to the directory containing data frames')
 parser.add_argument('out_dir', help='Path to the directory in which the models are saved')
+parser.add_argument('batch_size', type=int, help='batch size for training and validation datasets')
+parser.add_argument('dataset_size', type=int, help='total size of the dataset, to be splitted into training and validation')
+parser.add_argument('l_rate', type=float, help='learning rate')
+parser.add_argument('epochs', type=int, help='number of epochs for training loop')
 arguments = parser.parse_args()
 
 # Set the run number and create the corresponding directory
@@ -26,12 +30,12 @@ os.mkdir(path_rundir)
 print('Run number {}'.format(run_nbr))
 
 # Parameters for DataLoader
-params = {'batch_size': 4,  # from 8 to 64
+params = {'batch_size': arguments.batch_size,  # from 8 to 64
           'shuffle': False,
           'num_workers': 6}
 
 # Generate training and validation datasets
-length = 100
+length = arguments.dataset_size
 Dataset = DatasetTracks(arguments.in_dir, length)
 training_set, validation_set = data.dataset.random_split(Dataset, [int(length/2), int(length/2)])
 print(len(training_set))
@@ -44,7 +48,7 @@ print('Test generator is ready')
 # Define model, optimizer and loss function
 model = NeuralNetModel()
 # optimizer = torch.optim.SGD(model.parameters(), lr=1e-1)
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-1)
+optimizer = torch.optim.Adam(model.parameters(), lr=arguments.l_rate)
 model = model.float()
 # loss_fn = torch.nn.MSELoss()
 loss_fn = torch.nn.BCEWithLogitsLoss()
@@ -65,7 +69,7 @@ if use_cuda and torch.cuda.is_available():
 trloss_filename = '{}/train_losses.csv'.format(path_rundir)
 f_loss = open(trloss_filename, 'w+')
 
-max_epochs = 1
+max_epochs = arguments.epochs
 print('Starting the training...')
 for epoch in range(max_epochs):
     # Training
@@ -94,7 +98,6 @@ for epoch in range(max_epochs):
         if i % 4 == 0:  # print every 4 mini-batches
             print('[%d, %5d] loss: %.9f' %
                   (epoch, i, running_loss / 4))
-            # ax.plot(epoch*epoch_iters + i, running_loss/4, 'b-')
             running_loss = 0.0
 
     # Save the trained model at each epoch
@@ -107,6 +110,8 @@ f_loss.close()
 vloss_filename = '{}/val_losses.csv'.format(path_rundir)
 f_loss = open(vloss_filename, 'w+')
 val_running_loss = 0.0
+corr_overall = 0
+tot_overall = 0
 with torch.no_grad():
     for j, val_data in enumerate(validation_generator, 0):
         val_local_datapoint, val_local_target = val_data
@@ -116,32 +121,27 @@ with torch.no_grad():
         model.eval()
 
         val_prediction = model(val_local_datapoint.float())
+        # print(val_prediction.size())
+        # print(val_local_target.size())
+        # Calculate the loss and print it to file
         val_loss = loss_fn(val_prediction.float(), val_local_target.float())
         f_loss.write('{},'.format(val_loss.item()))
         # print(val_loss.item())
 
-        # epoch_iters = len(validation_set) / params['batch_size']
-        # val_running_loss = val_running_loss + val_loss.item()
-        # if j % 4 == 0:  # plot every 4 mini-batches
-        #     # print('[%d, %5d] val loss: %.9f' %
-        #     #       (epoch, i, running_loss / 4))
-        #     ax.plot(epoch * epoch_iters + j, val_running_loss / 4, 'r-')
-        #     val_running_loss = 0.0
+        # Calculate accuracy of the model
+        for layer in range(6):
+            for sample in range(tuple(val_prediction.size())[0]):
+                input = (val_local_datapoint[sample, 0, :, :, layer], val_local_datapoint[sample, 1, :, :, layer])
+                pred = signal_entries(input, val_prediction[sample, 0, :, :, layer])
+                targ = signal_entries(input, val_local_target[sample, 0, :, :, layer])
+                if pred.nelement() > 1:
+                    corr, tot = accuracy_step(pred, targ, 0.5)
+                    corr_overall += corr
+                    tot_overall += tot
+
+accuracy = corr_overall/tot_overall
+print('Accuracy of the model:', accuracy)
+
 f_loss.close()
 
-# # Plot loss function for training and validation
-# train_epoch_iters = len(training_set) / params['batch_size']
-# if train_epoch_iters > int(train_epoch_iters): train_epoch_iters = int(train_epoch_iters) + 1
-# val_epoch_iters = len(validation_set) / params['batch_size']
-# if val_epoch_iters > int(val_epoch_iters): val_epoch_iters = int(val_epoch_iters) + 1
-# plt.figure()
-# plt.subplot(211)
-# plt.plot(list(range(train_epoch_iters*max_epochs)), train_losses, 'b-')
-# plt.xlabel('train iteration')
-# plt.ylabel('running loss')
-# plt.subplot(212)
-# plt.plot(list(range(val_epoch_iters)), val_losses, 'r-')
-# plt.xlabel('val iteration')
-# plt.ylabel('val loss')
-#
-# plt.show()
+
