@@ -1,6 +1,6 @@
 import torch
 from torch.utils import data
-from classes import DatasetTracks, NeuralNetModel, accuracy_step, signal_entries
+from classes import DatasetTracks, NeuralNetModel, accuracy_step, signal_entries, f1_step, transf_prediction
 import matplotlib.pyplot as plt
 import sys
 import argparse
@@ -52,8 +52,10 @@ optimizer = torch.optim.Adam(model.parameters(), lr=arguments.l_rate)
 model = model.float()
 # loss_fn = torch.nn.MSELoss()
 loss_fn = torch.nn.BCEWithLogitsLoss()
+# loss_fn = torch.nn.BCELoss()
 
 # Create config file with model hyperparameters
+params.update({'dataset_size': arguments.dataset_size, 'learning_rate': arguments.l_rate, 'epochs_number': arguments.epochs})
 config_filename = '{}/model_config.json'.format(path_rundir)
 with open(config_filename, 'w+') as json_file:
   json.dump(params, json_file)
@@ -110,8 +112,11 @@ f_loss.close()
 vloss_filename = '{}/val_losses.csv'.format(path_rundir)
 f_loss = open(vloss_filename, 'w+')
 val_running_loss = 0.0
-corr_overall = 0
-tot_overall = 0
+corr_overall = 0 # Correct predictions
+tot_overall = 0 # Total number of predictions
+tp_overall = 0 # True positives
+ap_overall = 0 # Actual number of positives
+pp_overall = 0 # Predicted number of positives
 with torch.no_grad():
     for j, val_data in enumerate(validation_generator, 0):
         val_local_datapoint, val_local_target = val_data
@@ -128,20 +133,38 @@ with torch.no_grad():
         f_loss.write('{},'.format(val_loss.item()))
         # print(val_loss.item())
 
-        # Calculate accuracy of the model
+        # Calculate accuracy, precision, recall and f1 of the model
         for layer in range(6):
             for sample in range(tuple(val_prediction.size())[0]):
                 input = (val_local_datapoint[sample, 0, :, :, layer], val_local_datapoint[sample, 1, :, :, layer])
                 pred = signal_entries(input, val_prediction[sample, 0, :, :, layer])
+                print(pred)
+                pred = transf_prediction(pred, 0)
+                print(torch.nonzero(pred, as_tuple=True))
                 targ = signal_entries(input, val_local_target[sample, 0, :, :, layer])
-                if pred.nelement() > 1:
-                    corr, tot = accuracy_step(pred, targ, 0)
+
+                if pred.nelement() > 1: # Checking only in case of ambiguity
+                    corr, tot = accuracy_step(pred, targ)
                     corr_overall += corr
                     tot_overall += tot
-
-accuracy = corr_overall/tot_overall
-print('Accuracy of the model:', accuracy)
+                    true_pos, actual_pos, pred_pos = f1_step(pred, targ)
+                    tp_overall += true_pos
+                    ap_overall += actual_pos
+                    pp_overall += pred_pos
 
 f_loss.close()
+
+accuracy = corr_overall/tot_overall # Accuracy
+print('Accuracy:', accuracy)
+rec = tp_overall/ap_overall # Recall
+print('Recall:', rec)
+if pp_overall>0:
+    prec = tp_overall/pp_overall # Precision
+    f1 = 2 * prec * rec / (prec + rec)
+    print('Precision:', prec)
+    print('f1:', f1)
+else:
+    print('Zero predicted positives')
+
 
 

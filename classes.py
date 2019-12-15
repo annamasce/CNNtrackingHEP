@@ -127,6 +127,8 @@ class NeuralNetModel(torch.nn.Module):
         # print(x.size())
         x = self.pointwise_nonlinearity(x)
         x = self.conv2(x)
+        # print(x)
+        # print(x.size())
         return x
 
 def signal_entries(input, output):
@@ -149,11 +151,24 @@ def signal_entries(input, output):
 def transf_prediction(prediction, thr):
     true_tensor = torch.ones(tuple(prediction.size()))
     false_tensor = torch.zeros(tuple(prediction.size()))
-    return torch.where(prediction>thr, true_tensor, false_tensor)
+    tr_pred = torch.where(prediction>=thr, true_tensor, false_tensor)
+    return tr_pred
 
-def accuracy_step(prediction, target, thr):
-    prediction = transf_prediction(prediction, thr)
+def accuracy_step(prediction, target):
     corr_tensor = torch.eq(prediction, target)
     correct = float(corr_tensor.sum())
     total = corr_tensor.nelement()
     return correct, total
+
+def f1_step(prediction, target):
+    true_tensor = torch.ones(tuple(prediction.size()))
+    false_tensor = torch.zeros(tuple(prediction.size()))
+    true_positives = float((prediction*target).sum())
+    print(true_positives)
+    reversed_pred = torch.where(prediction==0, true_tensor, false_tensor)
+    reversed_targ = torch.where(target==0, true_tensor, false_tensor)
+    false_negatives = float((reversed_pred*target).sum())
+    false_positives = float((prediction*reversed_targ).sum())
+    actual_positives = true_positives + false_negatives
+    pred_positives = true_positives + false_positives
+    return true_positives, actual_positives, pred_positives
