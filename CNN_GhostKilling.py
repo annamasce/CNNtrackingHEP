@@ -135,7 +135,7 @@ with torch.no_grad():
                 pred = signal_entries(input, val_prediction[sample, 0, :, :, layer])
                 targ = signal_entries(input, val_local_target[sample, 0, :, :, layer])
                 if pred.nelement() > 1:
-                    corr, tot = accuracy_step(pred, targ, 0.5)
+                    corr, tot = accuracy_step(pred, targ, 0)
                     corr_overall += corr
                     tot_overall += tot
 
