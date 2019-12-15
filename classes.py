@@ -69,8 +69,10 @@ class DatasetTracks(data.Dataset):
         # Create datapoint and target
         grid_size = 512
         n_detectors = 6
-        datapoint = np.zeros((2, grid_size, grid_size, n_detectors))
-        target = np.zeros((1, grid_size, grid_size, n_detectors))
+        # datapoint = np.zeros((2, grid_size, grid_size, n_detectors))
+        datapoint = np.zeros((2, n_detectors, grid_size, grid_size))
+        # target = np.zeros((1, grid_size, grid_size, n_detectors))
+        target = np.zeros((n_detectors, grid_size, grid_size))
 
         for layer in range(6):
             boardy = layer * 2
@@ -84,13 +86,14 @@ class DatasetTracks(data.Dataset):
             mTOTy = create_matrix_1type(ch_numbersy, TOTy, 'y')
             mTOTx = create_matrix_1type(ch_numbersx, TOTx, 'x')
             # Fill datapoint for selected detector (layer) with amplitude data
-            datapoint[0, :, :, layer] = mTOTy
-            datapoint[1, :, :, layer] = mTOTx
+            datapoint[0, layer, :, :] = mTOTy
+            datapoint[1, layer, :, :] = mTOTx
             # Construct the corresponding target from trackIDs in x and y
             mTracky = create_matrix_1type(ch_numbersy, tracky, 'y')
             mTrackx = create_matrix_1type(ch_numbersx, trackx, 'x')
-            target[0, :, :, layer] = create_matchmatrix(mTrackx, mTracky)
+            target[layer, :, :] = create_matchmatrix(mTrackx, mTracky)
         datapoint = torch.from_numpy(datapoint)
+        datapoint = datapoint.view([12, 512, 512])
         target = torch.from_numpy(target)
         return datapoint, target
 
@@ -106,11 +109,11 @@ class NeuralNetModel(torch.nn.Module):
         super().__init__()
         num_extracted_features = 3
         # This creates all the parameters that are optimized to fit the model
-        self.conv1 = torch.nn.Conv3d(in_channels=2, out_channels=num_extracted_features, kernel_size=(3, 3, 3),
-                                     padding=(1, 1, 1))
+        self.conv1 = torch.nn.Conv2d(in_channels=12, out_channels=num_extracted_features, kernel_size=(3, 3),
+                                     padding=(1, 1))
         self.pointwise_nonlinearity = torch.nn.ReLU()
-        self.conv2 = torch.nn.Conv3d(in_channels=num_extracted_features, out_channels=1, kernel_size=(3, 3, 3),
-                                     padding=(1, 1, 1))
+        self.conv2 = torch.nn.Conv2d(in_channels=num_extracted_features, out_channels=6, kernel_size=(3, 3),
+                                     padding=(1, 1))
 
     def get_num_params(self):
         num_params = 0
@@ -156,15 +159,17 @@ def transf_prediction(prediction, thr):
 
 def accuracy_step(prediction, target):
     corr_tensor = torch.eq(prediction, target)
+    print(corr_tensor)
     correct = float(corr_tensor.sum())
     total = corr_tensor.nelement()
+    print(total)
     return correct, total
 
 def f1_step(prediction, target):
     true_tensor = torch.ones(tuple(prediction.size()))
     false_tensor = torch.zeros(tuple(prediction.size()))
     true_positives = float((prediction*target).sum())
-    print(true_positives)
+    #print(true_positives)
     reversed_pred = torch.where(prediction==0, true_tensor, false_tensor)
     reversed_targ = torch.where(target==0, true_tensor, false_tensor)
     false_negatives = float((reversed_pred*target).sum())

@@ -136,13 +136,13 @@ with torch.no_grad():
         # Calculate accuracy, precision, recall and f1 of the model
         for layer in range(6):
             for sample in range(tuple(val_prediction.size())[0]):
-                input = (val_local_datapoint[sample, 0, :, :, layer], val_local_datapoint[sample, 1, :, :, layer])
-                pred = signal_entries(input, val_prediction[sample, 0, :, :, layer])
-                print(pred)
+                input = (val_local_datapoint[sample, layer, :, :], val_local_datapoint[sample, 6+layer, :, :])
+                pred = signal_entries(input, val_prediction[sample, layer, :, :])
+                #print(pred.size())
                 pred = transf_prediction(pred, 0)
-                print(torch.nonzero(pred, as_tuple=True))
-                targ = signal_entries(input, val_local_target[sample, 0, :, :, layer])
-
+                # print(torch.nonzero(pred, as_tuple=True))
+                targ = signal_entries(input, val_local_target[sample, layer, :, :])
+                #print(targ.size())
                 if pred.nelement() > 1: # Checking only in case of ambiguity
                     corr, tot = accuracy_step(pred, targ)
                     corr_overall += corr
