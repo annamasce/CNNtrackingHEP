@@ -2,7 +2,7 @@ import torch
 from torch.utils import data
 from neural_net import NeuralNetModel
 from dataset import DatasetCreator
-from model_functions import val_loop, mask
+from model_functions import validation, mask
 import matplotlib.pyplot as plt
 import sys
 import argparse
@@ -14,6 +14,7 @@ import os
 import json
 
 parser = argparse.ArgumentParser()
+parser.add_argument('device', help='Device {cpu,cuda:0}')
 parser.add_argument('in_dir', help='Path to the directory containing data frames')
 parser.add_argument('out_dir', help='Path to the directory in which the models are saved')
 parser.add_argument('batch_size', type=int, help='batch size for training and validation datasets')
@@ -60,7 +61,8 @@ model = model.float()
 
 
 # Create config file with model hyperparameters
-params.update({'dataset_size': arguments.dataset_size, 'learning_rate': arguments.l_rate, 'epochs_number': arguments.epochs, 'grid-size': arguments.grid_size})
+params.update({'dataset_size': arguments.dataset_size, 'learning_rate': arguments.l_rate,
+               'epochs_number': arguments.epochs, 'grid-size': arguments.grid_size})
 config_filename = '{}/model_config.json'.format(path_rundir)
 with open(config_filename, 'w+') as json_file:
   json.dump(params, json_file)
@@ -68,9 +70,7 @@ with open(config_filename, 'w+') as json_file:
 # sys.exit(0)
 
 # Transfer model to GPU
-use_cuda = True
-if use_cuda and torch.cuda.is_available():
-    model.cuda()
+model.to(arguments.device)
 
 # Create csv file to save loss values
 trloss_filename = '{}/train_losses.csv'.format(path_rundir)
@@ -87,14 +87,14 @@ for epoch in range(max_epochs):
         # print(local_datapoint.size())
         # print('iteration:', i)
 
-        # Transfer data to GPU
-        if use_cuda and torch.cuda.is_available():
-            local_datapoint = local_datapoint.cuda()
-            local_target = local_target.cuda()
+        # Transfer data to device
+        local_datapoint = local_datapoint.to(arguments.device)
+        local_target = local_target.to(arguments.device)
 
         # Model computations
         prediction = model(local_datapoint.float())
-        loss_fn = torch.nn.BCEWithLogitsLoss(reduction='sum', weight=mask(local_datapoint.float(), arguments.grid_size))
+        mask_tensor = mask(local_datapoint.float(), arguments.grid_size, device=arguments.device)
+        loss_fn = torch.nn.BCEWithLogitsLoss(reduction='sum', weight=mask_tensor)
         loss = loss_fn(prediction.float(), local_target.float())
         optimizer.zero_grad()
         loss.backward()
@@ -117,4 +117,5 @@ for epoch in range(max_epochs):
 f_loss.close()
 
 #Validation
-val_loop(model, validation_generator, path_rundir, arguments.grid_size)
+val_object = validation(device=arguments.device)
+val_object.val_loop(model, validation_generator, path_rundir, arguments.grid_size)
