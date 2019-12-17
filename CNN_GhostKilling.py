@@ -62,7 +62,7 @@ model = model.float()
 
 # Create config file with model hyperparameters
 params.update({'dataset_size': arguments.dataset_size, 'learning_rate': arguments.l_rate,
-               'epochs_number': arguments.epochs, 'grid-size': arguments.grid_size})
+               'epochs_number': arguments.epochs, 'grid_size': arguments.grid_size})
 config_filename = '{}/model_config.json'.format(path_rundir)
 with open(config_filename, 'w+') as json_file:
   json.dump(params, json_file)
@@ -116,6 +116,16 @@ for epoch in range(max_epochs):
     torch.save(model.state_dict(), PATH)
 f_loss.close()
 
-#Validation
+# Validation
 val_object = validation(device=arguments.device)
 val_object.val_loop(model, validation_generator, path_rundir, arguments.grid_size)
+acc = val_object.get_accuracy()
+rec = val_object.get_recall()
+prec = val_object.get_precision()
+f1 = val_object.get_f1()
+
+# Write results to file
+results = {'accuracy': acc, 'recall': rec, 'precision': prec, 'f1': f1}
+results_filename = '{}/model_results.json'.format(path_rundir)
+with open(results_filename, 'w+') as json_file:
+  json.dump(results, json_file)

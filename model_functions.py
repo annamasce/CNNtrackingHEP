@@ -7,6 +7,10 @@ class validation():
     def __init__(self, device='cpu'):
         # Initialization
         self.device = device
+        self.accuracy = 0
+        self.recall = 0
+        self.precision = 0
+        self.f1 = 0
 
     def signal_entries(self, input, output):
         '''
@@ -53,7 +57,7 @@ class validation():
         tr_pred = torch.where(prediction >= thr, true_tensor, false_tensor)
         return tr_pred
 
-    def val_loop(self, model, data_loader, path_rundir, grid_size, use_cuda=True, calc_metrics=True):
+    def val_loop(self, model, data_loader, path_rundir, grid_size, calc_metrics=True):
         vloss_filename = '{}/val_losses.csv'.format(path_rundir)
         f_loss = open(vloss_filename, 'w+')
         corr_overall = 0 # Correct predictions
@@ -65,9 +69,8 @@ class validation():
         with torch.no_grad():
             for j, val_data in enumerate(data_loader, 0):
                 val_local_datapoint, val_local_target = val_data
-                if use_cuda and torch.cuda.is_available():
-                    val_local_datapoint = val_local_datapoint.cuda()
-                    val_local_target = val_local_target.cuda()
+                val_local_datapoint = val_local_datapoint.to(self.device)
+                val_local_target = val_local_target.to(self.device)
                 model.eval()
 
                 val_prediction = model(val_local_datapoint.float())
@@ -101,18 +104,31 @@ class validation():
         f_loss.close()
 
         if calc_metrics:
-            accuracy = corr_overall/tot_overall # Accuracy
-            print('Accuracy:', accuracy)
-            rec = tp_overall/ap_overall # Recall
-            print('Recall:', rec)
+            self.accuracy = corr_overall/tot_overall # Accuracy
+            print('Accuracy:', self.accuracy)
+            self.recall = tp_overall/ap_overall # Recall
+            print('Recall:', self.recall)
             if pp_overall>0:
-                prec = tp_overall/pp_overall # Precision
-                f1 = 2 * prec * rec / (prec + rec)
-                print('Precision:', prec)
-                print('f1:', f1)
+                self.precision = tp_overall/pp_overall # Precision
+                self.f1 = 2 * self.precision * self.recall / (self.precision + self.recall)
+                print('Precision:', self.precision)
+                print('f1:', self.f1)
             else:
                 print('Zero predicted positives')
             print('True negatives:', tn_overall)
+
+    def get_accuracy(self):
+        return self.accuracy
+
+    def get_recall(self):
+        return self.recall
+
+    def get_precision(self):
+        return self.precision
+
+    def get_f1(self):
+        return self.f1
+
 
 def mask(input, grid_dim, device = 'cpu'):
     batches = tuple(input.size())[0]
