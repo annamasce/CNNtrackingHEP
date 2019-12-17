@@ -34,12 +34,13 @@ def create_matchmatrix(mx, my):
 
 class DatasetCreator(data.Dataset):
     # Characterizes a dataset for PyTorch
-    def __init__(self, data_dir, length, train=True):
+    def __init__(self, data_dir, length, grid_size, train=True):
         # Initialization
         self.dir = data_dir
         self.length = length
         # self.all = []
         self.offset = 0
+        self.grid_size = grid_size
 
         # Create 2 different datasets for training and test
         if train:
@@ -57,6 +58,7 @@ class DatasetCreator(data.Dataset):
         return self.length
 
     def read_file(self, index):
+        grid_size = self.grid_size
         # Generate one sample of data
         # Select sample
         file_input = '{}/{}_input.pkl'.format(self.dir, index)
@@ -67,11 +69,8 @@ class DatasetCreator(data.Dataset):
         # print('dataframe imported from pickle')
 
         # Create datapoint and target
-        grid_size = 512
         n_detectors = 6
-        # datapoint = np.zeros((2, grid_size, grid_size, n_detectors))
         datapoint = np.zeros((2, n_detectors, grid_size, grid_size))
-        # target = np.zeros((1, grid_size, grid_size, n_detectors))
         target = np.zeros((n_detectors, grid_size, grid_size))
 
         for layer in range(6):
@@ -86,14 +85,17 @@ class DatasetCreator(data.Dataset):
             mTOTy = create_matrix_1type(ch_numbersy, TOTy, 'y')
             mTOTx = create_matrix_1type(ch_numbersx, TOTx, 'x')
             # Fill datapoint for selected detector (layer) with amplitude data
-            datapoint[0, layer, :, :] = mTOTy
-            datapoint[1, layer, :, :] = mTOTx
+            low_limit = int((512-grid_size)/2)
+            up_limit = int((512+grid_size)/2)
+            datapoint[0, layer, :, :] = mTOTy[low_limit:up_limit, low_limit:up_limit]
+            datapoint[1, layer, :, :] = mTOTx[low_limit:up_limit, low_limit:up_limit]
             # Construct the corresponding target from trackIDs in x and y
             mTracky = create_matrix_1type(ch_numbersy, tracky, 'y')
             mTrackx = create_matrix_1type(ch_numbersx, trackx, 'x')
-            target[layer, :, :] = create_matchmatrix(mTrackx, mTracky)
+            targ_layer = create_matchmatrix(mTrackx, mTracky)
+            target[layer, :, :] =targ_layer[low_limit:up_limit, low_limit:up_limit]
         datapoint = torch.from_numpy(datapoint)
-        datapoint = datapoint.view([12, 512, 512])
+        datapoint = datapoint.view([2*n_detectors, grid_size, grid_size])
         target = torch.from_numpy(target)
         return datapoint, target
 

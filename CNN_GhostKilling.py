@@ -20,6 +20,7 @@ parser.add_argument('batch_size', type=int, help='batch size for training and va
 parser.add_argument('dataset_size', type=int, help='total size of the dataset, to be splitted into training and validation')
 parser.add_argument('l_rate', type=float, help='learning rate')
 parser.add_argument('epochs', type=int, help='number of epochs for training loop')
+parser.add_argument('grid_size', type=int, help='imaged size (if grid_size=512, then images are not cropped)')
 arguments = parser.parse_args()
 
 # Set the run number and create the corresponding directory
@@ -38,7 +39,7 @@ params = {'batch_size': arguments.batch_size,  # from 8 to 64
 
 # Generate training and validation datasets
 length = arguments.dataset_size
-Dataset = DatasetCreator(arguments.in_dir, length)
+Dataset = DatasetCreator(arguments.in_dir, length, arguments.grid_size)
 training_set, validation_set = data.dataset.random_split(Dataset, [int(length/2), int(length/2)])
 print(len(training_set))
 print(len(validation_set))
@@ -52,14 +53,14 @@ print('Test generator is ready')
 
 # U-net model
 model = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-   in_channels=12, out_channels=6, init_features=32, pretrained=False)
+    in_channels=12, out_channels=6, init_features=32, pretrained=False)
 # optimizer = torch.optim.SGD(model.parameters(), lr=1e-1)
 optimizer = torch.optim.Adam(model.parameters(), lr=arguments.l_rate)
 model = model.float()
 
 
 # Create config file with model hyperparameters
-params.update({'dataset_size': arguments.dataset_size, 'learning_rate': arguments.l_rate, 'epochs_number': arguments.epochs})
+params.update({'dataset_size': arguments.dataset_size, 'learning_rate': arguments.l_rate, 'epochs_number': arguments.epochs, 'grid-size': arguments.grid_size})
 config_filename = '{}/model_config.json'.format(path_rundir)
 with open(config_filename, 'w+') as json_file:
   json.dump(params, json_file)
@@ -83,6 +84,7 @@ for epoch in range(max_epochs):
     for i, data in enumerate(training_generator, 0):
         # get the inputs; data is a list of [datapoints, targets]
         local_datapoint, local_target = data
+        # print(local_datapoint.size())
         # print('iteration:', i)
 
         # Transfer data to GPU
@@ -92,7 +94,7 @@ for epoch in range(max_epochs):
 
         # Model computations
         prediction = model(local_datapoint.float())
-        loss_fn = torch.nn.BCEWithLogitsLoss(reduction='sum', weight=mask(local_datapoint.float()))
+        loss_fn = torch.nn.BCEWithLogitsLoss(reduction='sum', weight=mask(local_datapoint.float(), arguments.grid_size))
         loss = loss_fn(prediction.float(), local_target.float())
         optimizer.zero_grad()
         loss.backward()
@@ -115,4 +117,4 @@ for epoch in range(max_epochs):
 f_loss.close()
 
 #Validation
-val_loop(model, validation_generator, path_rundir)
+val_loop(model, validation_generator, path_rundir, arguments.grid_size)

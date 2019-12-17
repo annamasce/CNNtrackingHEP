@@ -46,7 +46,7 @@ def transf_prediction(prediction, thr):
     tr_pred = torch.where(prediction >= thr, true_tensor, false_tensor)
     return tr_pred
 
-def val_loop(model, data_loader, path_rundir, use_cuda=True, calc_metrics=True):
+def val_loop(model, data_loader, path_rundir, grid_size, use_cuda=True, calc_metrics=True):
     vloss_filename = '{}/val_losses.csv'.format(path_rundir)
     f_loss = open(vloss_filename, 'w+')
     corr_overall = 0 # Correct predictions
@@ -65,7 +65,7 @@ def val_loop(model, data_loader, path_rundir, use_cuda=True, calc_metrics=True):
 
             val_prediction = model(val_local_datapoint.float())
             # Calculate the loss and print it to file
-            loss_fn = torch.nn.BCEWithLogitsLoss(reduction='sum', weight=mask(val_local_datapoint.float()))
+            loss_fn = torch.nn.BCEWithLogitsLoss(reduction='sum', weight=mask(val_local_datapoint.float(), grid_size))
             val_loss = loss_fn(val_prediction.float(), val_local_target.float())
             f_loss.write('{},'.format(val_loss.item()))
             # print(val_loss.item())
@@ -107,8 +107,7 @@ def val_loop(model, data_loader, path_rundir, use_cuda=True, calc_metrics=True):
             print('Zero predicted positives')
         print('True negatives:', tn_overall)
 
-def mask(input):
-    grid_dim = 512
+def mask(input, grid_dim):
     batches = tuple(input.size())[0]
     mask = torch.zeros([batches, 6, grid_dim, grid_dim])
     for layer in range(6):
