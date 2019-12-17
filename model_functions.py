@@ -34,8 +34,8 @@ class validation():
         return correct, total
 
     def f1_step(self, prediction, target):
-        true_tensor = torch.ones(tuple(prediction.size()))
-        false_tensor = torch.zeros(tuple(prediction.size()))
+        true_tensor = torch.ones(tuple(prediction.size())).to(self.device)
+        false_tensor = torch.zeros(tuple(prediction.size())).to(self.device)
         true_positives = float((prediction * target).sum())
         # print(true_positives)
         reversed_pred = torch.where(prediction == 0, true_tensor, false_tensor)
@@ -48,8 +48,8 @@ class validation():
         return true_positives, actual_positives, pred_positives, true_negatives
 
     def transf_prediction(self, prediction, thr):
-        true_tensor = torch.ones(tuple(prediction.size()))
-        false_tensor = torch.zeros(tuple(prediction.size()))
+        true_tensor = torch.ones(tuple(prediction.size())).to(self.device)
+        false_tensor = torch.zeros(tuple(prediction.size())).to(self.device)
         tr_pred = torch.where(prediction >= thr, true_tensor, false_tensor)
         return tr_pred
 
@@ -124,6 +124,6 @@ def mask(input, grid_dim, device = 'cpu'):
             true_tensor = torch.ones(tuple(ymatrix.size())).to(device)
             false_tensor = torch.zeros(tuple(ymatrix.size())).to(device)
             prod = ymatrix*xmatrix
-            m = (torch.where(prod!=0, true_tensor, false_tensor)).to(device)
+            m = (torch.where(prod!=0, true_tensor, false_tensor))
             mask[sample, layer, :, :] = m
     return mask
