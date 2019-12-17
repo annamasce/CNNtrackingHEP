@@ -116,13 +116,13 @@ class validation():
 
 def mask(input, grid_dim, device = 'cpu'):
     batches = tuple(input.size())[0]
-    mask = torch.zeros([batches, 6, grid_dim, grid_dim])
+    mask = torch.zeros([batches, 6, grid_dim, grid_dim]).to(device)
     for layer in range(6):
         for sample in range(batches): # loop over batch dimension
             ymatrix = input[sample, layer, :, :]
             xmatrix = input[sample, 6 + layer, :, :]
-            true_tensor = torch.ones(tuple(ymatrix.size()))
-            false_tensor = torch.zeros(tuple(ymatrix.size()))
+            true_tensor = torch.ones(tuple(ymatrix.size())).to(device)
+            false_tensor = torch.zeros(tuple(ymatrix.size())).to(device)
             prod = ymatrix*xmatrix
             m = (torch.where(prod!=0, true_tensor, false_tensor)).to(device)
             mask[sample, layer, :, :] = m
