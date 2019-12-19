@@ -2,7 +2,7 @@ import torch
 from scipy.sparse import lil_matrix
 
 
-class validation():
+class Validation():
 
     def __init__(self, device='cpu'):
         # Initialization
@@ -57,9 +57,9 @@ class validation():
         tr_pred = torch.where(prediction >= thr, true_tensor, false_tensor)
         return tr_pred
 
-    def val_loop(self, model, data_loader, path_rundir, grid_size, calc_metrics=True):
-        vloss_filename = '{}/val_losses.csv'.format(path_rundir)
-        f_loss = open(vloss_filename, 'w+')
+    def val_loop(self, model, data_loader, calc_metrics=True):
+        # vloss_filename = '{}/val_losses.csv'.format(path_rundir)
+        # f_loss = open(vloss_filename, 'w+')
         corr_overall = 0 # Correct predictions
         tot_overall = 0 # Total number of predictions
         tp_overall = 0 # True positives
@@ -75,9 +75,9 @@ class validation():
 
                 val_prediction = model(val_local_datapoint.float())
                 # Calculate the loss and print it to file
-                loss_fn = torch.nn.BCEWithLogitsLoss(reduction='sum', weight=mask(val_local_datapoint.float(), grid_size, self.device))
-                val_loss = loss_fn(val_prediction.float(), val_local_target.float())
-                f_loss.write('{},'.format(val_loss.item()))
+                # loss_fn = torch.nn.BCEWithLogitsLoss(reduction='sum', weight=mask(val_local_datapoint.float(), grid_size, self.device))
+                # val_loss = loss_fn(val_prediction.float(), val_local_target.float())
+                # f_loss.write('{},'.format(val_loss.item()))
                 # print(val_loss.item())
 
                 if calc_metrics:
@@ -101,7 +101,7 @@ class validation():
                                 pp_overall += pred_pos
                                 tn_overall += true_neg
 
-        f_loss.close()
+        # f_loss.close()
 
         if calc_metrics:
             self.accuracy = corr_overall/tot_overall # Accuracy
@@ -115,7 +115,7 @@ class validation():
                 print('f1:', self.f1)
             else:
                 print('Zero predicted positives')
-            print('True negatives:', tn_overall)
+            # print('True negatives:', tn_overall)
 
     def get_accuracy(self):
         return self.accuracy

@@ -2,7 +2,7 @@ import torch
 from torch.utils import data
 from neural_net import NeuralNetModel
 from dataset import DatasetCreator
-from model_functions import validation, mask
+from model_functions import Validation, mask
 import matplotlib.pyplot as plt
 import sys
 import argparse
@@ -35,10 +35,11 @@ print('Run number {}'.format(run_nbr))
 
 # Parameters for DataLoader
 params = {'batch_size': arguments.batch_size,  # from 8 to 64
-          'shuffle': False,
-          'num_workers': 6}
+          'shuffle': True,
+          'num_workers': 4}
 
 # Generate training and validation datasets
+torch.manual_seed(0)
 length = arguments.dataset_size
 Dataset = DatasetCreator(arguments.in_dir, length, arguments.grid_size)
 training_set, validation_set = data.dataset.random_split(Dataset, [int(length/2), int(length/2)])
@@ -76,6 +77,8 @@ model.to(arguments.device)
 trloss_filename = '{}/train_losses.csv'.format(path_rundir)
 f_loss = open(trloss_filename, 'w+')
 
+val_object = Validation()
+
 max_epochs = arguments.epochs
 print('Starting the training...')
 for epoch in range(max_epochs):
@@ -94,7 +97,7 @@ for epoch in range(max_epochs):
         # Model computations
         prediction = model(local_datapoint.float())
         mask_tensor = mask(local_datapoint.float(), arguments.grid_size, device=arguments.device)
-        loss_fn = torch.nn.BCEWithLogitsLoss(reduction='sum', weight=mask_tensor)
+        loss_fn = torch.nn.BCEWithLogitsLoss(reduction='mean', weight=mask_tensor)
         loss = loss_fn(prediction.float(), local_target.float())
         optimizer.zero_grad()
         loss.backward()
@@ -114,18 +117,19 @@ for epoch in range(max_epochs):
     PATH = '{0}/CNN_epoch{1}_loss{2:.6}.pth'.format(path_rundir, epoch, loss.item())
     print(PATH)
     torch.save(model.state_dict(), PATH)
+
+    # Validation
+    val_object.val_loop(model, validation_generator)
+    acc = val_object.get_accuracy()
+    rec = val_object.get_recall()
+    prec = val_object.get_precision()
+    f1 = val_object.get_f1()
+
+    # Write results to file
+    results = {'accuracy': acc, 'recall': rec, 'precision': prec, 'f1': f1}
+    results_filename = '{}/epoch{}_results.json'.format(path_rundir, epoch)
+    with open(results_filename, 'w+') as json_file:
+        json.dump(results, json_file)
+
 f_loss.close()
 
-# Validation
-val_object = validation(device=arguments.device)
-val_object.val_loop(model, validation_generator, path_rundir, arguments.grid_size)
-acc = val_object.get_accuracy()
-rec = val_object.get_recall()
-prec = val_object.get_precision()
-f1 = val_object.get_f1()
-
-# Write results to file
-results = {'accuracy': acc, 'recall': rec, 'precision': prec, 'f1': f1}
-results_filename = '{}/model_results.json'.format(path_rundir)
-with open(results_filename, 'w+') as json_file:
-  json.dump(results, json_file)
