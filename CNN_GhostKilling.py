@@ -81,7 +81,7 @@ model.to(arguments.device)
 trloss_filename = '{}/train_losses.csv'.format(path_rundir)
 f_loss = open(trloss_filename, 'w+')
 
-val_object = Validation()
+val_object = Validation(device=arguments.device)
 
 max_epochs = arguments.epochs
 print('Starting the training...')
