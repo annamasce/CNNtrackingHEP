@@ -89,7 +89,7 @@ class Validation():
                             # print(torch.nonzero(val_local_datapoint[sample, layer+6, :, :], as_tuple=True))
                             pred = self.signal_entries(input, val_prediction[sample, layer, :, :])
                             # print(pred.size())
-                            print(pred)
+                            # print(pred)
                             pred = self.transf_prediction(pred, 0.5)
                             #print(torch.nonzero(pred, as_tuple=True))
                             targ = self.signal_entries(input, val_local_target[sample, layer, :, :])
