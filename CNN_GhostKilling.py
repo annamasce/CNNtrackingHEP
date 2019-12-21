@@ -42,20 +42,24 @@ params = {'batch_size': arguments.batch_size,  # from 8 to 64
 torch.manual_seed(0)
 length = arguments.dataset_size
 Dataset = DatasetCreator(arguments.in_dir, length, arguments.grid_size)
-training_set, validation_set = data.dataset.random_split(Dataset, [int(length/2), int(length/2)])
-print(len(training_set))
-print(len(validation_set))
+##############################################################################################################################
+sample_data = Dataset.read_file(1870)
+training_set = [sample_data]
+validation_set = [sample_data]
+# training_set, validation_set = data.dataset.random_split(Dataset, [int(length/2), int(length/2)])
+# print(len(training_set))
+# print(len(validation_set))
 training_generator = data.DataLoader(dataset=training_set, **params)
-print('Training generator is ready')
+# print('Training generator is ready')
 validation_generator = data.DataLoader(dataset=validation_set, **params)
-print('Test generator is ready')
+# print('Test generator is ready')
 
 # Define model and optimizer
 # model = NeuralNetModel()
 
 # U-net model
 model = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-    in_channels=12, out_channels=6, init_features=32, pretrained=False)
+    in_channels=26, out_channels=6, init_features=32, pretrained=False)
 # optimizer = torch.optim.SGD(model.parameters(), lr=1e-1)
 optimizer = torch.optim.Adam(model.parameters(), lr=arguments.l_rate)
 model = model.float()
@@ -84,9 +88,10 @@ print('Starting the training...')
 for epoch in range(max_epochs):
     # Training
     running_loss = 0.0
-    for i, data in enumerate(training_generator, 0):
+    ##################################################################################################################################
+    for i, sample_data in enumerate(training_generator, 0):
         # get the inputs; data is a list of [datapoints, targets]
-        local_datapoint, local_target = data
+        local_datapoint, local_target = sample_data
         # print(local_datapoint.size())
         # print('iteration:', i)
 
@@ -97,7 +102,8 @@ for epoch in range(max_epochs):
         # Model computations
         prediction = model(local_datapoint.float())
         mask_tensor = mask(local_datapoint.float(), arguments.grid_size, device=arguments.device)
-        loss_fn = torch.nn.BCEWithLogitsLoss(reduction='mean', weight=mask_tensor)
+        # loss_fn = torch.nn.BCEWithLogitsLoss(reduction='mean', weight=mask_tensor)
+        loss_fn = torch.nn.BCELoss(reduction='mean', weight=mask_tensor)
         loss = loss_fn(prediction.float(), local_target.float())
         optimizer.zero_grad()
         loss.backward()
@@ -119,6 +125,7 @@ for epoch in range(max_epochs):
     torch.save(model.state_dict(), PATH)
 
     # Validation
+    ######################################################################################################
     val_object.val_loop(model, validation_generator)
     acc = val_object.get_accuracy()
     rec = val_object.get_recall()

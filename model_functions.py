@@ -85,10 +85,13 @@ class Validation():
                     for layer in range(6):
                         for sample in range(tuple(val_prediction.size())[0]):
                             input = (val_local_datapoint[sample, layer, :, :], val_local_datapoint[sample, 6+layer, :, :])
+                            # print(torch.nonzero(val_local_datapoint[sample, layer, :, :], as_tuple=True))
+                            # print(torch.nonzero(val_local_datapoint[sample, layer+6, :, :], as_tuple=True))
                             pred = self.signal_entries(input, val_prediction[sample, layer, :, :])
-                            # print(pred)
-                            pred = self.transf_prediction(pred, 0)
-                            # print(torch.nonzero(pred, as_tuple=True))
+                            # print(pred.size())
+                            print(pred)
+                            pred = self.transf_prediction(pred, 0.5)
+                            #print(torch.nonzero(pred, as_tuple=True))
                             targ = self.signal_entries(input, val_local_target[sample, layer, :, :])
                             #print(targ.size())
                             if pred.nelement() > 1: # Checking only in case of ambiguity
