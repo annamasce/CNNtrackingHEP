@@ -43,16 +43,16 @@ torch.manual_seed(0)
 length = arguments.dataset_size
 Dataset = DatasetCreator(arguments.in_dir, length, arguments.grid_size)
 ##############################################################################################################################
-sample_data = Dataset.read_file(1870)
-training_set = [sample_data]
-validation_set = [sample_data]
-# training_set, validation_set = data.dataset.random_split(Dataset, [int(length/2), int(length/2)])
-# print(len(training_set))
-# print(len(validation_set))
+# sample_data = Dataset.read_file(1870)
+# training_set = [sample_data]
+# validation_set = [sample_data]
+training_set, validation_set = data.dataset.random_split(Dataset, [int(length/2), int(length/2)])
+print(len(training_set))
+print(len(validation_set))
 training_generator = data.DataLoader(dataset=training_set, **params)
-# print('Training generator is ready')
+print('Training generator is ready')
 validation_generator = data.DataLoader(dataset=validation_set, **params)
-# print('Test generator is ready')
+print('Test generator is ready')
 
 # Define model and optimizer
 # model = NeuralNetModel()
@@ -88,7 +88,6 @@ print('Starting the training...')
 for epoch in range(max_epochs):
     # Training
     running_loss = 0.0
-    ##################################################################################################################################
     for i, sample_data in enumerate(training_generator, 0):
         # get the inputs; data is a list of [datapoints, targets]
         local_datapoint, local_target = sample_data
@@ -120,12 +119,12 @@ for epoch in range(max_epochs):
             running_loss = 0.0
 
     # Save the trained model at each epoch
-    PATH = '{0}/CNN_epoch{1}_loss{2:.6}.pth'.format(path_rundir, epoch, loss.item())
-    print(PATH)
-    torch.save(model.state_dict(), PATH)
+    if epoch % 5 == 0:
+        PATH = '{0}/CNN_epoch{1}_loss{2:.6}.pth'.format(path_rundir, epoch, loss.item())
+        print(PATH)
+        torch.save(model.state_dict(), PATH)
 
     # Validation
-    ######################################################################################################
     val_object.val_loop(model, validation_generator)
     acc = val_object.get_accuracy()
     rec = val_object.get_recall()
@@ -133,10 +132,11 @@ for epoch in range(max_epochs):
     f1 = val_object.get_f1()
 
     # Write results to file
-    results = {'accuracy': acc, 'recall': rec, 'precision': prec, 'f1': f1}
-    results_filename = '{}/epoch{}_results.json'.format(path_rundir, epoch)
-    with open(results_filename, 'w+') as json_file:
-        json.dump(results, json_file)
+    if epoch % 5 == 0:
+        results = {'accuracy': acc, 'recall': rec, 'precision': prec, 'f1': f1}
+        results_filename = '{}/epoch{}_results.json'.format(path_rundir, epoch)
+        with open(results_filename, 'w+') as json_file:
+            json.dump(results, json_file)
 
 f_loss.close()
 
