@@ -100,7 +100,8 @@ for epoch in range(max_epochs):
 
         # Model computations
         prediction = model(local_datapoint.float())
-        mask_tensor = mask(local_datapoint.float(), arguments.grid_size, device=arguments.device)
+        # mask_tensor = mask(local_datapoint.float(), arguments.grid_size, device=arguments.device)
+        mask_tensor = None
         # loss_fn = torch.nn.BCEWithLogitsLoss(reduction='mean', weight=mask_tensor)
         loss_fn = torch.nn.BCELoss(reduction='mean', weight=mask_tensor)
         loss = loss_fn(prediction.float(), local_target.float())

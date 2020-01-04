@@ -82,7 +82,9 @@ class Validation():
 
                 if calc_metrics:
                     # Calculate accuracy, precision, recall and f1 of the model
+                    # Loop over layers
                     for layer in range(6):
+                        # Loop over batches
                         for sample in range(tuple(val_prediction.size())[0]):
                             input = (val_local_datapoint[sample, layer, :, :], val_local_datapoint[sample, 6+layer, :, :])
                             # print(torch.nonzero(val_local_datapoint[sample, layer, :, :], as_tuple=True))
