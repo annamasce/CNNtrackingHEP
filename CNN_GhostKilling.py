@@ -42,10 +42,6 @@ params = {'batch_size': arguments.batch_size,  # from 8 to 64
 torch.manual_seed(0)
 length = arguments.dataset_size
 Dataset = DatasetCreator(arguments.in_dir, length, arguments.grid_size)
-##############################################################################################################################
-# sample_data = Dataset.read_file(1870)
-# training_set = [sample_data]
-# validation_set = [sample_data]
 training_set, validation_set = data.dataset.random_split(Dataset, [int(length/2), int(length/2)])
 print(len(training_set))
 print(len(validation_set))
@@ -54,13 +50,11 @@ print('Training generator is ready')
 validation_generator = data.DataLoader(dataset=validation_set, **params)
 print('Test generator is ready')
 
-# Define model and optimizer
-# model = NeuralNetModel()
-
 # U-net model
 model = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
     in_channels=26, out_channels=6, init_features=32, pretrained=False)
 # optimizer = torch.optim.SGD(model.parameters(), lr=1e-1)
+# Adam optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=arguments.l_rate)
 model = model.float()
 
@@ -71,8 +65,6 @@ params.update({'dataset_size': arguments.dataset_size, 'learning_rate': argument
 config_filename = '{}/model_config.json'.format(path_rundir)
 with open(config_filename, 'w+') as json_file:
   json.dump(params, json_file)
-
-# sys.exit(0)
 
 # Transfer model to GPU
 model.to(arguments.device)
@@ -91,8 +83,6 @@ for epoch in range(max_epochs):
     for i, sample_data in enumerate(training_generator, 0):
         # get the inputs; data is a list of [datapoints, targets]
         local_datapoint, local_target = sample_data
-        # print(local_datapoint.size())
-        # print('iteration:', i)
 
         # Transfer data to device
         local_datapoint = local_datapoint.to(arguments.device)
@@ -100,9 +90,7 @@ for epoch in range(max_epochs):
 
         # Model computations
         prediction = model(local_datapoint.float())
-        # mask_tensor = mask(local_datapoint.float(), arguments.grid_size, device=arguments.device)
-        mask_tensor = None
-        # loss_fn = torch.nn.BCEWithLogitsLoss(reduction='mean', weight=mask_tensor)
+        mask_tensor = mask(local_datapoint.float(), arguments.grid_size, device=arguments.device)
         loss_fn = torch.nn.BCELoss(reduction='mean', weight=mask_tensor)
         loss = loss_fn(prediction.float(), local_target.float())
         optimizer.zero_grad()
@@ -120,7 +108,7 @@ for epoch in range(max_epochs):
             running_loss = 0.0
 
     # Save the trained model at each epoch
-    if epoch % 5 == 0:
+    if epoch % 1 == 0:
         PATH = '{0}/CNN_epoch{1}_loss{2:.6}.pth'.format(path_rundir, epoch, loss.item())
         print(PATH)
         torch.save(model.state_dict(), PATH)
@@ -133,7 +121,7 @@ for epoch in range(max_epochs):
     f1 = val_object.get_f1()
 
     # Write results to file
-    if epoch % 5 == 0:
+    if epoch % 1 == 0:
         results = {'accuracy': acc, 'recall': rec, 'precision': prec, 'f1': f1}
         results_filename = '{}/epoch{}_results.json'.format(path_rundir, epoch)
         with open(results_filename, 'w+') as json_file:
