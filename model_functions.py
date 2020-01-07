@@ -49,7 +49,8 @@ class Validation():
         actual_positives = true_positives + false_negatives
         pred_positives = true_positives + false_positives
         true_negatives = float((reversed_pred*reversed_targ).sum())
-        return true_positives, actual_positives, pred_positives, true_negatives
+        actual_negatives = true_negatives + false_positives
+        return true_positives, actual_positives, pred_positives, true_negatives, actual_negatives
 
     def transf_prediction(self, prediction, thr):
         true_tensor = torch.ones(tuple(prediction.size())).to(self.device)
@@ -66,6 +67,7 @@ class Validation():
         ap_overall = 0 # Actual number of positives
         pp_overall = 0 # Predicted number of positives
         tn_overall = 0 # True negatives
+        an_overall = 0 # Actual negatives
         with torch.no_grad():
             for j, val_data in enumerate(data_loader, 0):
                 val_local_datapoint, val_local_target = val_data
@@ -100,11 +102,12 @@ class Validation():
                                 corr, tot = self.accuracy_step(pred, targ)
                                 corr_overall += corr
                                 tot_overall += tot
-                                true_pos, actual_pos, pred_pos, true_neg = self.f1_step(pred, targ)
+                                true_pos, actual_pos, pred_pos, true_neg, actual_neg = self.f1_step(pred, targ)
                                 tp_overall += true_pos
                                 ap_overall += actual_pos
                                 pp_overall += pred_pos
                                 tn_overall += true_neg
+                                an_overall += actual_neg
 
         # f_loss.close()
 
@@ -121,6 +124,11 @@ class Validation():
             else:
                 print('Zero predicted positives')
             # print('True negatives:', tn_overall)
+
+            print('Actual positives:', ap_overall)
+            print('Actual negatives:', an_overall)
+            ratio = ap_overall/an_overall
+            print('Ratio:', ratio)
 
     def get_accuracy(self):
         return self.accuracy
