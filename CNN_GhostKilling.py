@@ -69,6 +69,21 @@ with open(config_filename, 'w+') as json_file:
 # Transfer model to GPU
 model.to(arguments.device)
 
+# Validation
+val_object = Validation(device=arguments.device)
+val_object.val_loop(model, validation_generator)
+acc = val_object.get_accuracy()
+rec = val_object.get_recall()
+prec = val_object.get_precision()
+f1 = val_object.get_f1()
+
+# Write results to file
+print('Results before training:' )
+results = {'accuracy': acc, 'recall': rec, 'precision': prec, 'f1': f1}
+results_filename = '{}/epoch{}_results.json'.format(path_rundir, -1)
+with open(results_filename, 'w+') as json_file:
+    json.dump(results, json_file)
+
 # Create csv file to save loss values
 trloss_filename = '{}/train_losses.csv'.format(path_rundir)
 f_loss = open(trloss_filename, 'w+')
