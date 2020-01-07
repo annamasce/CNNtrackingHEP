@@ -10,6 +10,7 @@ from random import seed
 from random import randint
 import glob
 import os
+import numpy as np
 
 import json
 
@@ -40,6 +41,7 @@ params = {'batch_size': arguments.batch_size,  # from 8 to 64
 
 # Generate training and validation datasets
 torch.manual_seed(0)
+np.random.seed(0)
 length = arguments.dataset_size
 Dataset = DatasetCreator(arguments.in_dir, length, arguments.grid_size)
 training_set, validation_set = data.dataset.random_split(Dataset, [int(length/2), int(length/2)])
@@ -69,7 +71,8 @@ with open(config_filename, 'w+') as json_file:
 # Transfer model to GPU
 model.to(arguments.device)
 
-# Validation
+# Validation before training
+print('Results before training:' )
 val_object = Validation(device=arguments.device)
 val_object.val_loop(model, validation_generator)
 acc = val_object.get_accuracy()
@@ -78,7 +81,6 @@ prec = val_object.get_precision()
 f1 = val_object.get_f1()
 
 # Write results to file
-print('Results before training:' )
 results = {'accuracy': acc, 'recall': rec, 'precision': prec, 'f1': f1}
 results_filename = '{}/epoch{}_results.json'.format(path_rundir, -1)
 with open(results_filename, 'w+') as json_file:

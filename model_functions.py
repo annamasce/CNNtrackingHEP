@@ -125,10 +125,10 @@ class Validation():
                 print('Zero predicted positives')
             # print('True negatives:', tn_overall)
 
-            print('Actual positives:', ap_overall)
-            print('Actual negatives:', an_overall)
-            ratio = ap_overall/an_overall
-            print('Ratio:', ratio)
+            # print('Actual positives:', ap_overall)
+            # print('Actual negatives:', an_overall)
+            # ratio = ap_overall/an_overall
+            # print('Ratio:', ratio)
 
     def get_accuracy(self):
         return self.accuracy
